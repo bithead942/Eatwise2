@@ -97,8 +97,6 @@ private fun AppRoot(modifier: Modifier = Modifier) {
                 onSetTime = viewModel::setTime,
                 onAddMeal = viewModel::addMeal,
                 onRemoveMeal = viewModel::removeMeal,
-                onAddWater = viewModel::addWater,
-                onResetWater = { viewModel.addWater(-state.waterOz) },
                 onOpenSettings = { showSettings = true }
             )
         }

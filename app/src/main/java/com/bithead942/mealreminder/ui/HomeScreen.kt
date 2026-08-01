@@ -1,9 +1,7 @@
 package com.bithead942.mealreminder.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -22,18 +20,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,7 +38,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,7 +55,6 @@ import com.bithead942.mealreminder.ui.theme.Divider
 import com.bithead942.mealreminder.ui.theme.InkBlue
 import com.bithead942.mealreminder.ui.theme.TextMuted
 import com.bithead942.mealreminder.ui.theme.TextPrimary
-import com.bithead942.mealreminder.ui.theme.TrackGrey
 import java.time.LocalTime
 
 @Composable
@@ -75,8 +66,6 @@ fun HomeScreen(
     onSetTime: (Int, LocalTime) -> Unit,
     onAddMeal: () -> Unit,
     onRemoveMeal: (Int) -> Unit,
-    onAddWater: (Int) -> Unit,
-    onResetWater: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     var editing by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -95,14 +84,6 @@ fun HomeScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
             BrandHeader(onOpenSettings = onOpenSettings)
-            HorizontalDivider(color = Divider)
-            WaterRow(
-                current = state.waterOz,
-                goal = state.settings.waterGoalOz,
-                serving = state.settings.waterServingOz,
-                onAddWater = onAddWater,
-                onResetWater = onResetWater
-            )
             HorizontalDivider(color = Divider)
             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 itemsIndexed(state.meals, key = { _, meal -> meal.id }) { index, meal ->
@@ -195,63 +176,7 @@ private fun BrandHeader(onOpenSettings: () -> Unit) {
                 color = Cyan
             )
         }
-        IconButton(onClick = onOpenSettings) {
-            Icon(
-                Icons.Filled.WaterDrop,
-                contentDescription = stringResource(R.string.settings),
-                tint = Cyan,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun WaterRow(
-    current: Int,
-    goal: Int,
-    serving: Int,
-    onAddWater: (Int) -> Unit,
-    onResetWater: () -> Unit
-) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.WaterDrop, contentDescription = null, tint = Cyan, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = stringResource(R.string.water),
-                fontSize = 15.sp,
-                color = TextPrimary,
-                modifier = Modifier.weight(1f)
-            )
-            Text(stringResource(R.string.water_amount, current, goal), fontSize = 14.sp, color = TextPrimary)
-            IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = stringResource(R.string.water_options),
-                    tint = TextMuted
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { if (goal <= 0) 0f else (current.toFloat() / goal).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-            color = Cyan,
-            trackColor = TrackGrey,
-            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-        AnimatedVisibility(visible = expanded) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(onClick = { onAddWater(serving) }) { Text("+$serving oz") }
-                OutlinedButton(onClick = { onAddWater(-serving) }) { Text("-$serving oz") }
-                OutlinedButton(onClick = onResetWater) { Text("Reset") }
-            }
-        }
+        Spacer(Modifier.width(48.dp))
     }
 }
 
