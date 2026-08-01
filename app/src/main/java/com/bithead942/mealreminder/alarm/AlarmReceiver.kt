@@ -25,7 +25,7 @@ class AlarmReceiver : BroadcastReceiver() {
                         val index = state.meals.indexOfFirst { it.id == mealId }
                         val meal = state.meals.getOrNull(index)
                         if (meal != null && !meal.isCompleted && !meal.isSnoozed(now) && meal.isDue(now)) {
-                            container.notifier.notifyMeal(meal, index + 1, state.settings)
+                            container.notifier.notifyMeal(meal, index + 1, state.settings, now)
                             container.repository.update(now) { current ->
                                 current.copy(
                                     meals = current.meals.map {

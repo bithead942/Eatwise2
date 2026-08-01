@@ -87,7 +87,7 @@ class ReminderNotifier(private val context: Context) {
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
-    fun notifyMeal(meal: MealReminder, position: Int, settings: Settings) {
+    fun notifyMeal(meal: MealReminder, position: Int, settings: Settings, now: Long = System.currentTimeMillis()) {
         val channelId = alertChannelId(settings)
         val scheduled = meal.scheduledAt?.let { format(it) }
         val notification = NotificationCompat.Builder(context, channelId)
@@ -97,6 +97,12 @@ class ReminderNotifier(private val context: Context) {
                 if (scheduled != null) "Scheduled for $scheduled. Tap to open, or snooze."
                 else "Tap to open, or snooze."
             )
+            // The fire time keeps each repeat distinct so the system re-plays the sound once per
+            // interval instead of treating an identical repost as a silent update.
+            .setSubText("Reminder at ${format(now)}")
+            .setWhen(now)
+            .setShowWhen(true)
+            .setOnlyAlertOnce(false)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
