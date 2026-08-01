@@ -62,7 +62,6 @@ fun HomeScreen(
     state: AppState,
     now: Long,
     onToggleMeal: (Int) -> Unit,
-    onSnooze: (Int, Int) -> Unit,
     onSetTime: (Int, LocalTime) -> Unit,
     onAddMeal: () -> Unit,
     onRemoveMeal: (Int) -> Unit,
@@ -149,8 +148,6 @@ fun HomeScreen(
                 canRemove = state.meals.size > 1,
                 onDismiss = { editing = null },
                 onSetTime = { time -> onSetTime(meal.id, time); editing = null },
-                onSnooze = { minutes -> onSnooze(meal.id, minutes); editing = null },
-                onToggle = { onToggleMeal(meal.id); editing = null },
                 onRemove = { onRemoveMeal(meal.id); editing = null }
             )
         }

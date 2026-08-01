@@ -93,7 +93,6 @@ private fun AppRoot(modifier: Modifier = Modifier) {
                 state = state,
                 now = now,
                 onToggleMeal = viewModel::toggleMeal,
-                onSnooze = viewModel::snooze,
                 onSetTime = viewModel::setTime,
                 onAddMeal = viewModel::addMeal,
                 onRemoveMeal = viewModel::removeMeal,
