@@ -55,8 +55,9 @@ class MealViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun snooze(mealId: Int, minutes: Int) = mutate { state, now ->
-        ScheduleEngine.snooze(state, mealId, minutes, now)
+    fun snooze(mealId: Int, minutes: Int) {
+        notifier.cancelMeal(mealId)
+        mutate { state, now -> ScheduleEngine.snooze(state, mealId, minutes, now) }
     }
 
     fun setTime(mealId: Int, time: LocalTime) = mutate { state, now ->

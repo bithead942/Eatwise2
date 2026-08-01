@@ -65,15 +65,21 @@ object ScheduleEngine {
         return state.copy(meals = reschedule(meals, state.settings))
     }
 
+    /**
+     * Pushes the meal's time out by [minutes] and stops its alert. Because the new time becomes an
+     * anchor, every later pending meal is re-spaced by [Settings.intervalMinutes] from it.
+     */
     fun snooze(state: AppState, mealId: Int, minutes: Int, now: Long): AppState {
         val meals = state.meals.map { meal ->
             if (meal.id == mealId) {
-                meal.copy(snoozedUntil = now + minutes * 60_000L, alerting = false)
+                val base = meal.scheduledAt ?: now
+                val newTime = base + minutes * 60_000L
+                meal.copy(manualAt = newTime, scheduledAt = newTime, snoozedUntil = null, alerting = false)
             } else {
                 meal
             }
         }
-        return state.copy(meals = meals)
+        return state.copy(meals = reschedule(meals, state.settings))
     }
 
     /** Pins [timeOfDay] on a meal; later pending meals are spaced from it. */
