@@ -14,6 +14,7 @@ import com.bithead942.mealreminder.R
 import com.bithead942.mealreminder.data.AppState
 import com.bithead942.mealreminder.data.MealReminder
 import com.bithead942.mealreminder.data.SNOOZE_15
+import com.bithead942.mealreminder.data.SNOOZE_20
 import com.bithead942.mealreminder.data.SNOOZE_30
 import com.bithead942.mealreminder.data.Settings
 import com.bithead942.mealreminder.domain.ScheduleEngine
@@ -93,8 +94,8 @@ class ReminderNotifier(private val context: Context) {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Time to eat — meal $position")
             .setContentText(
-                if (scheduled != null) "Scheduled for $scheduled. Mark it done to stop the alerts."
-                else "Mark it done to stop the alerts."
+                if (scheduled != null) "Scheduled for $scheduled. Tap to open, or snooze."
+                else "Tap to open, or snooze."
             )
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -103,8 +104,8 @@ class ReminderNotifier(private val context: Context) {
             .setOngoing(false)
             .setContentIntent(contentIntent())
             .setFullScreenIntent(contentIntent(), true)
-            .addAction(0, "I ATE", actionIntent(NotificationActionReceiver.ACTION_COMPLETE, meal.id, 0))
             .addAction(0, "SNOOZE 15", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_15))
+            .addAction(0, "SNOOZE 20", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_20))
             .addAction(0, "SNOOZE 30", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_30))
             .build()
         manager.notify(alertNotificationId(meal.id), notification)
