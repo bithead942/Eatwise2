@@ -158,14 +158,6 @@ fun SettingsScreen(
                 Text("Clear today's schedule")
             }
         }
-        Text(
-            text = "The schedule stays blank until the first meal of the day is marked as eaten. " +
-                "Every following meal is then spaced by the time between meals, and shifts again " +
-                "each time a meal is marked.",
-            color = TextMuted,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
     }
 }
 
