@@ -7,8 +7,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.bithead942.mealreminder.R
 import com.bithead942.mealreminder.data.AppState
@@ -44,33 +49,20 @@ class ReminderNotifier(private val context: Context) {
     }
 
     /**
-     * Alert channels are immutable once created, so a channel is derived from the current sound and
-     * vibration settings and stale ones are removed.
+     * The alert channel is intentionally silent with no vibration: the sound and vibration are
+     * played manually exactly once per fire (see [playAlertOnce]) so they never loop. Older
+     * sound-bearing channels from previous versions are removed.
      */
-    private fun alertChannelId(settings: Settings): String {
-        val signature = listOf(
-            settings.soundEnabled.toString(),
-            settings.vibrateEnabled.toString(),
-            settings.soundUri.orEmpty()
-        ).joinToString("|")
-        val id = "meal_alerts_" + Integer.toHexString(signature.hashCode())
+    private fun alertChannelId(): String {
+        val id = ALERT_CHANNEL_ID
         if (manager.getNotificationChannel(id) == null) {
             val channel = NotificationChannel(
                 id,
                 context.getString(R.string.notification_channel_alerts),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                enableVibration(settings.vibrateEnabled)
-                if (settings.vibrateEnabled) vibrationPattern = VIBRATION_PATTERN
-                if (settings.soundEnabled) {
-                    val attributes = AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .build()
-                    setSound(resolveSound(settings), attributes)
-                } else {
-                    setSound(null, null)
-                }
+                setSound(null, null)
+                enableVibration(false)
                 setBypassDnd(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
@@ -82,13 +74,46 @@ class ReminderNotifier(private val context: Context) {
         return id
     }
 
+    /** Plays the chosen sound once and vibrates once; nothing loops. */
+    private fun playAlertOnce(settings: Settings) {
+        if (settings.soundEnabled) {
+            runCatching {
+                val player = MediaPlayer()
+                player.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .build()
+                )
+                player.setDataSource(context, resolveSound(settings))
+                player.isLooping = false
+                player.setOnCompletionListener { it.release() }
+                player.setOnErrorListener { mp, _, _ -> mp.release(); true }
+                player.prepare()
+                player.start()
+            }
+        }
+        if (settings.vibrateEnabled) {
+            runCatching {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(VibratorManager::class.java).defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Vibrator::class.java)
+                }
+                // repeat index -1 means play the pattern a single time.
+                vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, -1))
+            }
+        }
+    }
+
     fun resolveSound(settings: Settings): Uri =
         settings.soundUri?.let(Uri::parse)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
     fun notifyMeal(meal: MealReminder, position: Int, settings: Settings, now: Long = System.currentTimeMillis()) {
-        val channelId = alertChannelId(settings)
+        val channelId = alertChannelId()
         val scheduled = meal.scheduledAt?.let { format(it) }
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
@@ -97,12 +122,9 @@ class ReminderNotifier(private val context: Context) {
                 if (scheduled != null) "Scheduled for $scheduled. Tap to open, or snooze."
                 else "Tap to open, or snooze."
             )
-            // The fire time keeps each repeat distinct so the system re-plays the sound once per
-            // interval instead of treating an identical repost as a silent update.
-            .setSubText("Reminder at ${format(now)}")
             .setWhen(now)
             .setShowWhen(true)
-            .setOnlyAlertOnce(false)
+            .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -115,6 +137,7 @@ class ReminderNotifier(private val context: Context) {
             .addAction(0, "SNOOZE 30", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_30))
             .build()
         manager.notify(alertNotificationId(meal.id), notification)
+        playAlertOnce(settings)
     }
 
     fun cancelMeal(mealId: Int) = manager.cancel(alertNotificationId(mealId))
@@ -179,6 +202,7 @@ class ReminderNotifier(private val context: Context) {
 
     companion object {
         const val SERVICE_CHANNEL_ID = "meal_reminder_service"
+        private const val ALERT_CHANNEL_ID = "meal_alerts_silent"
         const val SERVICE_NOTIFICATION_ID = 1
         private const val ALERT_NOTIFICATION_BASE = 1000
         private val VIBRATION_PATTERN = longArrayOf(0, 500, 300, 500, 300, 700)
