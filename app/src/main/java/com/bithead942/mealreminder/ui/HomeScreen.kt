@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,7 +36,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,13 +81,17 @@ fun HomeScreen(
 ) {
     var editing by rememberSaveable { mutableStateOf<Int?>(null) }
 
+    // Only one meal can be acted on at a time: the first that has not been eaten yet.
+    val activeMealId = state.meals.firstOrNull { !it.isCompleted }?.id
+    val allComplete = state.meals.isNotEmpty() && activeMealId == null
+
+    var addPromptDismissed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(allComplete) { if (!allComplete) addPromptDismissed = false }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.White)) {
         val compact = maxHeight < 640.dp
         val timeSize = if (compact) 24.sp else 28.sp
         val rowHeight: Dp = if (compact) 62.dp else 74.dp
-
-        // Before the day is seeded no meal has a time, so the first one is the actionable meal.
-        val firstUnscheduledId = state.meals.firstOrNull { !it.isCompleted && it.scheduledAt == null }?.id
 
         Column(modifier = Modifier.fillMaxSize()) {
             BrandHeader(onOpenSettings = onOpenSettings)
@@ -103,7 +110,7 @@ fun HomeScreen(
                         position = index + 1,
                         meal = meal,
                         now = now,
-                        highlighted = meal.isDue(now) && !meal.isSnoozed(now) || meal.id == firstUnscheduledId,
+                        enabled = meal.id == activeMealId,
                         timeSize = timeSize,
                         rowHeight = rowHeight,
                         onToggle = { onToggleMeal(meal.id) },
@@ -125,6 +132,24 @@ fun HomeScreen(
                     )
                 }
             }
+        }
+
+        if (allComplete && !addPromptDismissed) {
+            AlertDialog(
+                onDismissRequest = { addPromptDismissed = true },
+                title = { Text(stringResource(R.string.add_reminder_title)) },
+                text = { Text(stringResource(R.string.add_reminder_message)) },
+                confirmButton = {
+                    TextButton(onClick = { onAddMeal(); addPromptDismissed = true }) {
+                        Text(stringResource(R.string.yes))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { addPromptDismissed = true }) {
+                        Text(stringResource(R.string.no))
+                    }
+                }
+            )
         }
 
         val meal = state.meals.firstOrNull { it.id == editing }
@@ -235,7 +260,7 @@ private fun MealRow(
     position: Int,
     meal: MealReminder,
     now: Long,
-    highlighted: Boolean,
+    enabled: Boolean,
     timeSize: androidx.compose.ui.unit.TextUnit,
     rowHeight: Dp,
     onToggle: () -> Unit,
@@ -282,7 +307,7 @@ private fun MealRow(
                 )
             }
         } else {
-            EatButton(enabledLook = highlighted, onClick = onToggle)
+            EatButton(enabled = enabled, onClick = onToggle)
         }
         IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
             Icon(
@@ -296,14 +321,14 @@ private fun MealRow(
 }
 
 @Composable
-private fun EatButton(enabledLook: Boolean, onClick: () -> Unit) {
+private fun EatButton(enabled: Boolean, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = if (enabledLook) Cyan else DisabledPill,
+        color = if (enabled) Cyan else DisabledPill,
         modifier = Modifier
             .widthIn(min = 76.dp)
             .height(34.dp)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
