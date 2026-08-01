@@ -85,13 +85,21 @@ fun HomeScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             BrandHeader(onOpenSettings = onOpenSettings)
             HorizontalDivider(color = Divider)
+            // The most recently marked meal is the last completed one in list order.
+            val lastCompletedIndex = state.meals.indexOfLast { it.isCompleted }
             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 itemsIndexed(state.meals, key = { _, meal -> meal.id }) { index, meal ->
+                    val isActive = meal.id == activeMealId
+                    val isMostRecentCompleted = meal.isCompleted && index == lastCompletedIndex
                     MealRow(
                         position = index + 1,
                         meal = meal,
                         now = now,
-                        enabled = meal.id == activeMealId,
+                        enabled = isActive,
+                        // Edit only the next meal or the most recently marked one; hide it on
+                        // earlier completed meals, disable it on later (not-yet-active) meals.
+                        showEdit = !(meal.isCompleted && !isMostRecentCompleted),
+                        editEnabled = isActive || isMostRecentCompleted,
                         timeSize = timeSize,
                         rowHeight = rowHeight,
                         onToggle = { onToggleMeal(meal.id) },
@@ -186,6 +194,8 @@ private fun MealRow(
     meal: MealReminder,
     now: Long,
     enabled: Boolean,
+    showEdit: Boolean,
+    editEnabled: Boolean,
     timeSize: androidx.compose.ui.unit.TextUnit,
     rowHeight: Dp,
     onToggle: () -> Unit,
@@ -234,13 +244,17 @@ private fun MealRow(
         } else {
             EatButton(enabled = enabled, onClick = onToggle)
         }
-        IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.edit_meal, position),
-                tint = InkBlue,
-                modifier = Modifier.size(18.dp)
-            )
+        if (showEdit) {
+            IconButton(onClick = onEdit, enabled = editEnabled, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.edit_meal, position),
+                    tint = if (editEnabled) InkBlue else TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        } else {
+            Spacer(Modifier.size(36.dp))
         }
     }
 }
