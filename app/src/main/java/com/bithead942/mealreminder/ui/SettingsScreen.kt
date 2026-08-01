@@ -149,28 +149,6 @@ fun SettingsScreen(
             onCheckedChange = { checked -> onSettingsChange { it.copy(vibrateEnabled = checked) } }
         )
 
-        SectionTitle("Water")
-        StepperRow(
-            label = "Daily goal",
-            value = "${settings.waterGoalOz} oz",
-            onDecrease = {
-                onSettingsChange { it.copy(waterGoalOz = (it.waterGoalOz - 8).coerceAtLeast(8)) }
-            },
-            onIncrease = {
-                onSettingsChange { it.copy(waterGoalOz = (it.waterGoalOz + 8).coerceAtMost(512)) }
-            }
-        )
-        StepperRow(
-            label = "Serving size",
-            value = "${settings.waterServingOz} oz",
-            onDecrease = {
-                onSettingsChange { it.copy(waterServingOz = (it.waterServingOz - 2).coerceAtLeast(2)) }
-            },
-            onIncrease = {
-                onSettingsChange { it.copy(waterServingOz = (it.waterServingOz + 2).coerceAtMost(64)) }
-            }
-        )
-
         SectionTitle("Today")
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             OutlinedButton(onClick = onResetDay, modifier = Modifier.fillMaxWidth()) {
