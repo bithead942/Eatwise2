@@ -17,6 +17,7 @@ val DisabledPill = Color(0xFFD7DDE0)
 val Divider = Color(0xFFEDF0F1)
 val TrackGrey = Color(0xFFDDE2E4)
 val BadgeGrey = Color(0xFF9AAAB2)
+val DeleteRed = Color(0xFFD32F2F)
 
 private val LightColors = lightColorScheme(
     primary = Cyan,

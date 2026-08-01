@@ -1,16 +1,22 @@
 package com.bithead942.mealreminder.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,15 +40,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bithead942.mealreminder.R
@@ -50,12 +60,17 @@ import com.bithead942.mealreminder.data.AppState
 import com.bithead942.mealreminder.data.MealReminder
 import com.bithead942.mealreminder.ui.theme.BadgeGrey
 import com.bithead942.mealreminder.ui.theme.Cyan
+import com.bithead942.mealreminder.ui.theme.DeleteRed
 import com.bithead942.mealreminder.ui.theme.DisabledPill
 import com.bithead942.mealreminder.ui.theme.Divider
 import com.bithead942.mealreminder.ui.theme.InkBlue
 import com.bithead942.mealreminder.ui.theme.TextMuted
 import com.bithead942.mealreminder.ui.theme.TextPrimary
+import kotlinx.coroutines.launch
 import java.time.LocalTime
+import kotlin.math.roundToInt
+
+private val DELETE_REVEAL_WIDTH = 96.dp
 
 @Composable
 fun HomeScreen(
@@ -90,20 +105,26 @@ fun HomeScreen(
                 itemsIndexed(state.meals, key = { _, meal -> meal.id }) { index, meal ->
                     val isActive = meal.id == activeMealId
                     val isMostRecentCompleted = meal.isCompleted && index == lastCompletedIndex
-                    MealRow(
-                        position = index + 1,
-                        meal = meal,
-                        now = now,
-                        enabled = isActive,
-                        // Edit only the next meal or the most recently marked one; hide it on
-                        // earlier completed meals, disable it on later (not-yet-active) meals.
-                        showEdit = !(meal.isCompleted && !isMostRecentCompleted),
-                        editEnabled = isActive || isMostRecentCompleted,
-                        timeSize = timeSize,
-                        rowHeight = rowHeight,
-                        onToggle = { onToggleMeal(meal.id) },
-                        onEdit = { editing = meal.id }
-                    )
+                    SwipeToDeleteRow(
+                        // Only incomplete rows can be swiped away, and never the last remaining meal.
+                        canDelete = !meal.isCompleted && state.meals.size > 1,
+                        onDelete = { onRemoveMeal(meal.id) }
+                    ) {
+                        MealRow(
+                            position = index + 1,
+                            meal = meal,
+                            now = now,
+                            enabled = isActive,
+                            // Edit only the next meal or the most recently marked one; hide it on
+                            // earlier completed meals, disable it on later (not-yet-active) meals.
+                            showEdit = !(meal.isCompleted && !isMostRecentCompleted),
+                            editEnabled = isActive || isMostRecentCompleted,
+                            timeSize = timeSize,
+                            rowHeight = rowHeight,
+                            onToggle = { onToggleMeal(meal.id) },
+                            onEdit = { editing = meal.id }
+                        )
+                    }
                     HorizontalDivider(color = Divider)
                 }
                 item {
@@ -182,6 +203,69 @@ private fun BrandHeader(onOpenSettings: () -> Unit) {
             )
         }
         Spacer(Modifier.width(48.dp))
+    }
+}
+
+/**
+ * Wraps [content] so a right-to-left swipe reveals a red Delete button, and a left-to-right swipe
+ * hides it again. When [canDelete] is false the content is rendered plainly with no swipe gesture.
+ */
+@Composable
+private fun SwipeToDeleteRow(
+    canDelete: Boolean,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    if (!canDelete) {
+        content()
+        return
+    }
+    val density = LocalDensity.current
+    val revealPx = with(density) { DELETE_REVEAL_WIDTH.toPx() }
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
+            Surface(
+                color = DeleteRed,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(DELETE_REVEAL_WIDTH)
+                    .clickable {
+                        onDelete()
+                        scope.launch { offsetX.snapTo(0f) }
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = stringResource(R.string.delete),
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .fillMaxWidth()
+                .background(Color.White)
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        scope.launch { offsetX.snapTo((offsetX.value + delta).coerceIn(-revealPx, 0f)) }
+                    },
+                    onDragStopped = {
+                        scope.launch {
+                            offsetX.animateTo(if (offsetX.value <= -revealPx / 2) -revealPx else 0f)
+                        }
+                    }
+                )
+        ) {
+            content()
+        }
     }
 }
 
