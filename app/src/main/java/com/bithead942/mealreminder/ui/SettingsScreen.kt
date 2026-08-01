@@ -151,7 +151,10 @@ fun SettingsScreen(
 
         SectionTitle("Today")
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            OutlinedButton(onClick = onResetDay, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { onResetDay(); onBack() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Clear today's schedule")
             }
         }
