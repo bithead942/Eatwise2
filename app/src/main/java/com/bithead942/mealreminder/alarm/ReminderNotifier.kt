@@ -140,9 +140,9 @@ class ReminderNotifier(private val context: Context) {
             .setOngoing(false)
             .setContentIntent(contentIntent())
             .setFullScreenIntent(contentIntent(), true)
-            .addAction(0, "SNOOZE 15", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_15))
-            .addAction(0, "SNOOZE 20", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_20))
-            .addAction(0, "SNOOZE 30", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_30))
+            .addAction(0, "15 min", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_15))
+            .addAction(0, "20 min", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_20))
+            .addAction(0, "30 min", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_30))
         if (scheduledAt != null) {
             // The header shows a live count-up from the scheduled meal time.
             builder.setWhen(scheduledAt).setShowWhen(true).setUsesChronometer(true)
