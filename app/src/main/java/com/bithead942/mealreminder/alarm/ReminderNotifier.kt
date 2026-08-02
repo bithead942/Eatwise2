@@ -112,18 +112,26 @@ class ReminderNotifier(private val context: Context) {
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
+    /**
+     * Shows the single meal-alert notification. If it is still visible (not dismissed) it is
+     * silently updated to show how long it has been since the scheduled meal; if it was dismissed
+     * (or is appearing for the first time) it is re-triggered with sound and vibration. Only one
+     * meal-alert notification is ever shown at a time because they share [ALERT_NOTIFICATION_ID].
+     */
     fun notifyMeal(meal: MealReminder, position: Int, settings: Settings, now: Long = System.currentTimeMillis()) {
         val channelId = alertChannelId()
-        val scheduled = meal.scheduledAt?.let { format(it) }
-        val notification = NotificationCompat.Builder(context, channelId)
+        val scheduledAt = meal.scheduledAt
+        val since = if (scheduledAt != null && now > scheduledAt) elapsed(now - scheduledAt) else null
+        val text = when {
+            scheduledAt == null -> "Tap to open, or snooze."
+            since != null -> "$since since your ${format(scheduledAt)} meal. Tap to open, or snooze."
+            else -> "Scheduled for ${format(scheduledAt)}. Tap to open, or snooze."
+        }
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Time to eat — meal $position")
-            .setContentText(
-                if (scheduled != null) "Scheduled for $scheduled. Tap to open, or snooze."
-                else "Tap to open, or snooze."
-            )
-            .setWhen(now)
-            .setShowWhen(true)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -135,14 +143,22 @@ class ReminderNotifier(private val context: Context) {
             .addAction(0, "SNOOZE 15", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_15))
             .addAction(0, "SNOOZE 20", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_20))
             .addAction(0, "SNOOZE 30", actionIntent(NotificationActionReceiver.ACTION_SNOOZE, meal.id, SNOOZE_30))
-            .build()
-        manager.notify(alertNotificationId(meal.id), notification)
-        playAlertOnce(settings)
+        if (scheduledAt != null) {
+            // The header shows a live count-up from the scheduled meal time.
+            builder.setWhen(scheduledAt).setShowWhen(true).setUsesChronometer(true)
+        } else {
+            builder.setWhen(now).setShowWhen(true)
+        }
+        val wasVisible = manager.activeNotifications.any { it.id == ALERT_NOTIFICATION_ID }
+        manager.notify(ALERT_NOTIFICATION_ID, builder.build())
+        // A dismissed (or first-time) notification re-triggers the alert; a still-visible one is
+        // only updated with the new elapsed time, without sounding again.
+        if (!wasVisible) playAlertOnce(settings)
     }
 
-    fun cancelMeal(mealId: Int) = manager.cancel(alertNotificationId(mealId))
+    fun cancelMeal(mealId: Int) = manager.cancel(ALERT_NOTIFICATION_ID)
 
-    fun cancelAllMealAlerts(state: AppState) = state.meals.forEach { cancelMeal(it.id) }
+    fun cancelAllMealAlerts(state: AppState) = manager.cancel(ALERT_NOTIFICATION_ID)
 
     fun buildServiceNotification(state: AppState?, now: Long = System.currentTimeMillis()): Notification {
         val next = state?.let { ScheduleEngine.nextMeal(it, now) }
@@ -171,6 +187,15 @@ class ReminderNotifier(private val context: Context) {
     private fun format(millis: Long): String =
         timeFormatter.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
 
+    /** Human-readable elapsed span, e.g. "5 min" or "1h 05m". */
+    private fun elapsed(durationMillis: Long): String {
+        val totalMinutes = durationMillis / 60_000L
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return if (hours > 0) String.format(Locale.getDefault(), "%dh %02dm", hours, minutes)
+        else "$minutes min"
+    }
+
     private fun contentIntent(): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -198,13 +223,12 @@ class ReminderNotifier(private val context: Context) {
         )
     }
 
-    private fun alertNotificationId(mealId: Int) = ALERT_NOTIFICATION_BASE + mealId
-
     companion object {
         const val SERVICE_CHANNEL_ID = "meal_reminder_service"
         private const val ALERT_CHANNEL_ID = "meal_alerts_silent"
         const val SERVICE_NOTIFICATION_ID = 1
-        private const val ALERT_NOTIFICATION_BASE = 1000
+        // A single fixed id keeps at most one meal-alert notification on screen at any time.
+        private const val ALERT_NOTIFICATION_ID = 1000
         private val VIBRATION_PATTERN = longArrayOf(0, 500, 300, 500, 300, 700)
     }
 }
