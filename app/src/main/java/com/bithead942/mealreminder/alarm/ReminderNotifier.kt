@@ -149,11 +149,9 @@ class ReminderNotifier(private val context: Context) {
         } else {
             builder.setWhen(now).setShowWhen(true)
         }
-        val wasVisible = manager.activeNotifications.any { it.id == ALERT_NOTIFICATION_ID }
         manager.notify(ALERT_NOTIFICATION_ID, builder.build())
-        // A dismissed (or first-time) notification re-triggers the alert; a still-visible one is
-        // only updated with the new elapsed time, without sounding again.
-        if (!wasVisible) playAlertOnce(settings)
+        // Every fire sounds and vibrates once — the initial alert and each follow-up update alike.
+        playAlertOnce(settings)
     }
 
     fun cancelMeal(mealId: Int) = manager.cancel(ALERT_NOTIFICATION_ID)
