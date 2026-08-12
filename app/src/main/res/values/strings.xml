@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Eatwise2</string>
+    <string name="brand">EATWISE2</string>
+    <string name="brand_tagline">Meal Reminder</string>
+    <string name="eat">EAT</string>
+    <string name="eat_at">EAT AT</string>
+    <string name="ate_at">ATE AT</string>
+    <string name="extra_reminder">+ Extra Reminder</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="menu">Menu</string>
+    <string name="edit_meal">Edit meal %1$d</string>
+    <string name="delete">Delete</string>
+    <string name="mark_not_eaten">Mark as not eaten</string>
+    <string name="snoozed_until">Snoozed until %1$s</string>
+    <string name="add_reminder_title">All meals done</string>
+    <string name="add_reminder_message">Add another meal reminder 2.5 hours after the last one?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="notification_channel_service">Meal Reminder status</string>
+    <string name="notification_channel_alerts">Meal alerts</string>
+</resources>
