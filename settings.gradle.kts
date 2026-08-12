@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MealReminder"
+rootProject.name = "Eatwise2"
 include(":app")

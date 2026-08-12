@@ -1,4 +1,4 @@
-# Meal Reminder
+# Eatwise2
 
 An Android meal reminder app in the style of Eatwise: a day of evenly spaced meal slots that
 re-space themselves around when you actually eat.
